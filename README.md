@@ -1,3 +1,7 @@
+
+![cover](https://github.com/user-attachments/assets/d9cb55e3-7e8e-4f85-8f33-574b7e3e2c9a)
+
+
 # SVG Icons Exporter - Figma Plugin
 
 A Figma plugin built with React that helps designers and developers quickly edit and export SVG icons along with their metadata. This plugin is particularly useful for managing and maintaining icon libraries.
