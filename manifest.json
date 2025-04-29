@@ -1,6 +1,8 @@
 {
   "name": "Choiceform SVG Icons Exporter",
-  "id": "icons-export-figma",
+  "id": "1499166753064086486",
+  "networkAccess": { "allowedDomains": ["none"] },
+  "documentAccess": "dynamic-page",
   "api": "1.0.0",
   "main": "dist/code.js",
   "ui": "dist/ui.html",
