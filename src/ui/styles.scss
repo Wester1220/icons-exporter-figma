@@ -1,0 +1,373 @@
+// 定义主要颜色变量
+$primary-color: rgb(0, 85, 255);
+$primary-hover: rgb(0, 77, 232);
+$secondary-color: rgba(217, 217, 217, 1);
+$success-color: rgb(48, 193, 87);
+$success-hover: rgb(37, 161, 72);
+$danger-color: rgb(244, 67, 54);
+$danger-hover: rgb(211, 47, 47);
+$light-color: rgb(245, 245, 245);
+$border-color: rgba(0, 0, 0, 0.1);
+$tag-bg: rgb(238, 244, 255);
+$text-color: rgba(0, 0, 0, 0.9);
+$radius: 5px;
+
+body {
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+button {
+  border-radius: $radius;
+  border: none;
+  padding: 4px 8px;
+  cursor: default;
+  font-size: 11px;
+  line-height: 16px;
+  &[data-variant="primary"] {
+    background: $primary-color;
+    color: white;
+    &:active {
+      background: $primary-hover;
+    }
+  }
+  &[data-variant="secondary"] {
+    border: 1px solid $border-color;
+    color: $text-color;
+    background: white;
+    &:active {
+      background: $light-color;
+    }
+  }
+  &[data-variant="success"] {
+    background: $success-color;
+    color: white;
+    &:active {
+      background: $success-hover;
+    }
+  }
+  &[data-disabled="true"] {
+    pointer-events: none;
+    background: $secondary-color;
+    color: $text-color;
+  }
+}
+
+.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  height: 100vh;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.app-title {
+  margin-top: 0;
+  font-size: 12px;
+}
+
+.app-description {
+  font-size: 11px;
+  margin-top: 0;
+  color: $text-color;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.status {
+  color: $text-color;
+  font-size: 11px;
+  margin-bottom: 16px;
+}
+
+.results {
+  overflow-y: auto;
+  border: 1px solid $border-color;
+  border-radius: $radius;
+  padding: 8px;
+  flex: 1;
+}
+
+.icon-result {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid $border-color;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.preview {
+  background: $light-color;
+  padding: 8px;
+  border-radius: $radius;
+  margin-bottom: 8px;
+  display: grid;
+  grid-template-columns: 24px 1fr auto auto;
+  place-content: start;
+  align-items: start;
+  gap: 8px;
+
+  .svg-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: white;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+}
+
+.metadata {
+  font-family: monospace;
+  font-size: 11px;
+  background: $light-color;
+  padding: 8px;
+  border-radius: $radius;
+  white-space: pre-wrap;
+}
+
+.rename-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.rename-input {
+  border: 1px solid $border-color;
+  border-radius: $radius;
+  padding: 4px 8px;
+  font-size: 11px;
+  line-height: 16px;
+  height: 24px;
+  box-sizing: border-box;
+  appearance: none;
+  &:hover {
+    border-color: $primary-color;
+  }
+  &:focus {
+    outline: none;
+    border-color: $primary-color;
+    box-shadow: 0 0 0 1px rgba($primary-color, 0.2);
+  }
+}
+
+/* 自定义 TagInput 组件样式 */
+.tag-input {
+  &-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: 24px;
+    border: 1px solid $border-color;
+    border-radius: $radius;
+    padding: 2px 4px;
+    background-color: white;
+    box-sizing: border-box;
+    cursor: text;
+    &:hover {
+      border-color: $primary-color;
+    }
+
+    &:focus-within {
+      border-color: $primary-color;
+      box-shadow: 0 0 0 1px rgba($primary-color, 0.2);
+    }
+  }
+
+  &-tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    width: 100%;
+    row-gap: 4px;
+    column-gap: 2px;
+  }
+
+  &-tag {
+    display: inline-flex;
+    align-items: center;
+    background: $tag-bg;
+    color: $text-color;
+    border-radius: 3px;
+    padding: 2px 4px;
+    font-size: 11px;
+    line-height: 16px;
+    height: 16px;
+    box-sizing: border-box;
+    gap: 4px;
+
+    &-text {
+      max-width: 150px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &-remove {
+      cursor: default;
+      font-size: 12px;
+      width: 14px;
+      height: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(0, 0, 0, 0.5);
+
+      &:hover {
+        color: $text-color;
+      }
+    }
+  }
+
+  &-field {
+    flex: 1;
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 11px;
+    padding: 4px 0;
+    appearance: none;
+
+    &::placeholder {
+      color: $secondary-color;
+    }
+  }
+}
+
+/* Preset tags */
+.preset {
+  &-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+  }
+
+  &-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    margin-bottom: 4px;
+    color: $text-color;
+  }
+
+  &-dropdown {
+    width: 100%;
+    padding: 4px;
+    border-radius: $radius;
+    border: 1px solid $border-color;
+    background-color: white;
+    font-size: 11px;
+    line-height: 16px;
+    height: 24px;
+    box-sizing: border-box;
+    appearance: none;
+    &:hover {
+      border-color: $primary-color;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $primary-color;
+      box-shadow: 0 0 0 1px rgba($primary-color, 0.2);
+    }
+  }
+
+  &-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+  }
+
+  &-tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 16px;
+    padding: 0 4px;
+    background: $light-color;
+    border-radius: 4px;
+    font-size: 11px;
+    line-height: 16px;
+    cursor: default;
+    color: $text-color;
+    border: 1px solid $border-color;
+    &:hover {
+      background: white;
+    }
+  }
+}
+
+.name-display {
+  line-height: 24px;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.inline-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  grid-column: 2 / 5;
+}
+
+.edit-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.hidden {
+  display: none;
+}
+
+.no-results {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  font-size: 12px;
+  color: $text-color;
+  padding: 32px;
+
+  &-icon {
+    color: $secondary-color;
+    padding: 32px 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  ol {
+    font-size: 11px;
+    color: $text-color;
+    margin: 0;
+    padding-left: 16px;
+    list-style-type: decimal;
+  }
+
+  li {
+    margin-bottom: 8px;
+  }
+}
