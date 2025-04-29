@@ -1,4 +1,11 @@
 /// <reference types="@figma/plugin-typings" />
+import {
+  extractTags,
+  toPascalCase,
+  toKebabCase,
+  updateFrameNameWithTags,
+  renameFrameKeepTags,
+} from "../utils";
 
 figma.showUI(__html__, { width: 400, height: 720 });
 
@@ -9,61 +16,6 @@ interface IconMetadata {
   height: number;
   tags: string[];
   filename: string;
-}
-
-// 辅助函数：将字符串转换为 PascalCase 命名
-function toPascalCase(str: string): string {
-  const cleanStr = str.replace(/\[.*?\]/g, "").trim();
-  return cleanStr
-    .split(/[-_\s]+/)
-    .filter((part) => part.length > 0)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-    .join("");
-}
-
-// 辅助函数：从框架名称中提取标签
-function extractTags(name: string): { cleanName: string; tags: string[] } {
-  let cleanName = name;
-  const tags: string[] = [];
-
-  // 如果标签在方括号中，如 [tag1,tag2]
-  // 这个正则表达式可以处理方括号前是否有空格
-  const tagMatch = cleanName.match(/\[(.*?)\]/);
-
-  if (tagMatch) {
-    const tagString = tagMatch[1];
-    tags.push(...tagString.split(",").map((tag) => tag.trim()));
-    cleanName = cleanName.replace(/\[.*?\]/, "").trim();
-  }
-
-  return { cleanName, tags };
-}
-
-// 辅助函数：更新框架名称与新标签
-function updateFrameNameWithTags(name: string, tags: string): string {
-  // 移除现有标签
-  let cleanName = name.replace(/\[.*?\]/, "").trim();
-
-  // 如果提供了新标签，添加它们
-  if (tags && tags.length > 0) {
-    cleanName = `${cleanName}[${tags}]`; // 移除方括号前的空格
-  }
-
-  return cleanName;
-}
-
-// 辅助函数：重命名框架但保持标签
-function renameFrameKeepTags(name: string, newName: string): string {
-  // 提取标签
-  const { tags } = extractTags(name);
-
-  // 创建新的名称，保持相同的标签
-  let result = newName.trim();
-  if (tags.length > 0) {
-    result = `${result}[${tags.join(",")}]`;
-  }
-
-  return result;
 }
 
 // 发送当前选择到UI当它加载时
@@ -116,6 +68,8 @@ figma.ui.onmessage = async (msg) => {
           svgOutlineText: true,
           svgIdAttribute: true,
           svgSimplifyStroke: true,
+          useAbsoluteBounds: true,
+          colorProfile: "SRGB",
         });
 
         const svgString = String.fromCharCode.apply(
@@ -133,7 +87,7 @@ figma.ui.onmessage = async (msg) => {
         const pascalCaseName = toPascalCase(cleanName);
 
         // 使用kebab-case用于文件名
-        const kebabCaseName = cleanName.toLowerCase().replace(/\s+/g, "-");
+        const kebabCaseName = toKebabCase(cleanName);
 
         // 为这个图标创建元数据
         const metadata: IconMetadata = {

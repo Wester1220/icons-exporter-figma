@@ -2,27 +2,11 @@ import React, { useEffect, useState } from "react";
 import IconResult from "./IconResult";
 import { ExportResult, SelectedNode } from "../types";
 import JSZip from "jszip";
+import { extractTags, toPascalCase, toKebabCase } from "../../utils";
 
 const App: React.FC = () => {
   const [status, setStatus] = useState<string>("Ready to export...");
   const [results, setResults] = useState<ExportResult[]>([]);
-
-  // 提取标签的辅助函数
-  const extractTags = (name: string): { cleanName: string; tags: string[] } => {
-    let cleanName = name;
-    const tags: string[] = [];
-
-    // 如果标签在方括号中，如 [tag1,tag2]
-    const tagMatch = cleanName.match(/\[(.*?)\]/);
-
-    if (tagMatch) {
-      const tagString = tagMatch[1];
-      tags.push(...tagString.split(",").map((tag) => tag.trim()));
-      cleanName = cleanName.replace(/\[.*?\]/, "").trim();
-    }
-
-    return { cleanName, tags };
-  };
 
   // 监听来自插件的消息
   useEffect(() => {
@@ -33,14 +17,29 @@ const App: React.FC = () => {
 
       if (message.type === "export-result") {
         const exportResults = message.data;
-        setResults(exportResults);
 
-        if (exportResults.length === 0) {
+        // 确保每个导出结果的 metadata.name 使用正确的 PascalCase 格式
+        const processedResults = exportResults.map((result: ExportResult) => {
+          const { cleanName } = extractTags(
+            result.metadata.filename.replace(".svg", "")
+          );
+          return {
+            ...result,
+            metadata: {
+              ...result.metadata,
+              name: toPascalCase(cleanName),
+            },
+          };
+        });
+
+        setResults(processedResults);
+
+        if (processedResults.length === 0) {
           setStatus("No frames selected for export");
         } else {
           setStatus(
-            `Exported ${exportResults.length} ${
-              exportResults.length > 1 ? "icons" : "icon"
+            `Exported ${processedResults.length} ${
+              processedResults.length > 1 ? "icons" : "icon"
             }`
           );
         }
@@ -68,17 +67,10 @@ const App: React.FC = () => {
                   // 从节点名称中提取新的元数据和标签
                   const frameName = matchingNode.name;
                   const { cleanName, tags } = extractTags(frameName);
-                  const pascalCaseName = cleanName
-                    .split(/\s+/)
-                    .map(
-                      (part: string) =>
-                        part.charAt(0).toUpperCase() +
-                        part.slice(1).toLowerCase()
-                    )
-                    .join("");
-                  const kebabCaseName = cleanName
-                    .toLowerCase()
-                    .replace(/\s+/g, "-");
+
+                  // 使用共享工具函数
+                  const pascalCaseName = toPascalCase(cleanName);
+                  const kebabCaseName = toKebabCase(cleanName);
 
                   // 创建更新后的metadata，包括最新的标签
                   const updatedMetadata = {
@@ -134,7 +126,10 @@ const App: React.FC = () => {
 
     try {
       const zip = new JSZip();
-      const iconsFolder = zip.folder("icons");
+
+      // 使用当前页面名称（category）作为文件夹名称和zip名称
+      const pageName = results[0]?.metadata?.category || "icons";
+      const iconsFolder = zip.folder(pageName);
 
       if (!iconsFolder) {
         setStatus("Error creating zip folder");
@@ -163,7 +158,7 @@ const App: React.FC = () => {
       // 创建一个下载链接并触发下载
       const link = document.createElement("a");
       link.href = URL.createObjectURL(content);
-      link.download = "icons.zip";
+      link.download = `${pageName}.zip`;
       link.click();
 
       setStatus(`Downloaded ${results.length} icon(s)`);
