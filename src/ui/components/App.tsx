@@ -1,9 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { usePluginMessages } from "../hooks/usePluginMessages";
 import IconResult from "./IconResult";
+import TagInput from "./TagInput";
 
 const App: React.FC = () => {
-  // 使用我们的自定义钩子管理与插件的通信
   const {
     status,
     results,
@@ -12,7 +12,58 @@ const App: React.FC = () => {
     updateTags,
     renameFrame,
     downloadAll,
+    batchAddTag,
+    batchRemoveTag,
   } = usePluginMessages();
+
+  // 批量标签状态
+  const [batchTagOperation, setBatchTagOperation] = useState<
+    "add" | "remove" | null
+  >(null);
+  const [batchTagsValue, setBatchTagsValue] = useState("");
+
+  // 处理批量操作标签
+  const handleBatchTag = () => {
+    if (!batchTagsValue.trim()) return;
+
+    // 获取多个标签
+    const tags = batchTagsValue
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter((tag) => tag !== "");
+
+    if (tags.length === 0) return;
+
+    // 批量处理所有标签
+    if (batchTagOperation === "add") {
+      // 处理添加标签
+      tags.forEach((tag) => batchAddTag(tag));
+    } else if (batchTagOperation === "remove") {
+      // 处理删除标签
+      tags.forEach((tag) => batchRemoveTag(tag));
+    }
+
+    // 重置状态
+    setBatchTagsValue("");
+    setBatchTagOperation(null);
+
+    // 等待所有消息处理完成后，触发一次导出操作来刷新UI
+    setTimeout(() => {
+      // 重新导出以强制刷新数据
+      exportFrames();
+    }, 300); // 添加延迟确保前面的操作已经完成
+  };
+
+  // 关闭批量标签操作
+  const closeBatchTagOperation = () => {
+    setBatchTagOperation(null);
+    setBatchTagsValue("");
+  };
+
+  // 处理标签值变化
+  const handleTagsChange = (value: string) => {
+    setBatchTagsValue(value);
+  };
 
   return (
     <div className="app-container">
@@ -42,8 +93,64 @@ const App: React.FC = () => {
         </button>
       </div>
 
-      <div className="status" role="status" aria-live="polite">
-        {status}
+      <div className="status-container">
+        {!batchTagOperation && (
+          <>
+            <div className="status" role="status" aria-live="polite">
+              {status}
+            </div>
+
+            {results.length >= 2 && (
+              <div className="batch-controls">
+                <span className="batch-edit-tags-label">Batch Edit tags:</span>
+                <button
+                  onClick={() => setBatchTagOperation("add")}
+                  data-variant="secondary"
+                  disabled={loading.tags}
+                  title="Add tags to all selected icons"
+                >
+                  Add
+                </button>
+                <button
+                  onClick={() => setBatchTagOperation("remove")}
+                  data-variant="secondary"
+                  disabled={loading.tags}
+                  title="Remove tags from all selected icons"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
+        {batchTagOperation && (
+          <div className="batch-tag-inline">
+            <div className="batch-tag-input-wrapper">
+              <TagInput
+                value={batchTagsValue}
+                onChange={handleTagsChange}
+                placeholder={
+                  batchTagOperation === "add"
+                    ? "Enter tags to add"
+                    : "Enter tags to remove"
+                }
+              />
+            </div>
+            <div className="batch-controls">
+              <button
+                onClick={handleBatchTag}
+                data-variant="primary"
+                disabled={!batchTagsValue.trim() || loading.tags}
+              >
+                {loading.tags ? "Processing..." : "Confirm"}
+              </button>
+              <button onClick={closeBatchTagOperation} data-variant="secondary">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="results" role="region" aria-label="Export Results">
@@ -61,8 +168,8 @@ const App: React.FC = () => {
               <svg width="48" height="48" fill="none" viewBox="0 0 16 16">
                 <path
                   stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                   d="m1 1 5.822 14L8.89 8.914 15 6.822z"
                 />
               </svg>

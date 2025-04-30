@@ -13,6 +13,9 @@ export const MESSAGE_TYPES = {
   RENAME_UPDATED: "rename-updated",
   GET_SELECTION: "get-selection",
   SELECTION_UPDATED: "selection-updated",
+  BATCH_ADD_TAG: "batch-add-tag",
+  BATCH_REMOVE_TAG: "batch-remove-tag",
+  BATCH_TAGS_UPDATED: "batch-tags-updated",
   CLOSE: "close",
 } as const;
 
@@ -173,6 +176,44 @@ export function usePluginMessages() {
     }
   };
 
+  // 处理批量添加标签
+  const batchAddTag = useCallback(async (tag: string) => {
+    if (!tag.trim() || resultsRef.current.length < 2) return;
+
+    setLoading((prev) => ({ ...prev, tags: true }));
+
+    // 向插件发送批量添加标签的消息
+    parent.postMessage(
+      {
+        pluginMessage: {
+          type: MESSAGE_TYPES.BATCH_ADD_TAG,
+          tag: tag.trim(),
+          nodeIds: resultsRef.current.map((result) => result.nodeId),
+        },
+      },
+      "*"
+    );
+  }, []);
+
+  // 处理批量删除标签
+  const batchRemoveTag = useCallback(async (tag: string) => {
+    if (!tag.trim() || resultsRef.current.length < 2) return;
+
+    setLoading((prev) => ({ ...prev, tags: true }));
+
+    // 向插件发送批量删除标签的消息
+    parent.postMessage(
+      {
+        pluginMessage: {
+          type: MESSAGE_TYPES.BATCH_REMOVE_TAG,
+          tag: tag.trim(),
+          nodeIds: resultsRef.current.map((result) => result.nodeId),
+        },
+      },
+      "*"
+    );
+  }, []);
+
   // 设置消息监听
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -182,7 +223,7 @@ export function usePluginMessages() {
 
         switch (message.type) {
           case MESSAGE_TYPES.EXPORT_RESULT: {
-            setLoading((prev) => ({ ...prev, export: false }));
+            setLoading((prev) => ({ ...prev, export: false, tags: false })); // 同时清除标签操作的loading状态
             const exportResults = message.data;
 
             // 确保每个导出结果的 metadata.name 使用正确的 PascalCase 格式
@@ -349,6 +390,53 @@ export function usePluginMessages() {
             break;
           }
 
+          case MESSAGE_TYPES.BATCH_TAGS_UPDATED: {
+            setLoading((prev) => ({ ...prev, tags: false }));
+            // 立即更新选区信息，以获取最新的标签
+            parent.postMessage(
+              {
+                pluginMessage: {
+                  type: MESSAGE_TYPES.GET_SELECTION,
+                },
+              },
+              "*"
+            );
+
+            // 如果消息中包含更新后的节点信息，更新对应的结果
+            if (message.updatedNodes && Array.isArray(message.updatedNodes)) {
+              setResults((prevResults) => {
+                return prevResults.map((result) => {
+                  // 找到对应的已更新节点
+                  const updatedNode = message.updatedNodes.find(
+                    (node: { id: string; name: string }) =>
+                      node.id === result.nodeId
+                  );
+
+                  if (updatedNode && updatedNode.name) {
+                    const { cleanName, tags } = extractTags(updatedNode.name);
+                    const pascalCaseName = toPascalCase(cleanName);
+                    const kebabCaseName = toKebabCase(cleanName);
+
+                    return {
+                      ...result,
+                      metadata: {
+                        ...result.metadata,
+                        name: pascalCaseName,
+                        filename: `${kebabCaseName}.svg`,
+                        tags: tags,
+                      },
+                    };
+                  }
+                  return result;
+                });
+              });
+            }
+
+            // 显示状态消息提示用户
+            setStatus("Tags updated successfully!");
+            break;
+          }
+
           default:
             break;
         }
@@ -386,5 +474,7 @@ export function usePluginMessages() {
     updateTags,
     renameFrame,
     downloadAll,
+    batchAddTag,
+    batchRemoveTag,
   };
 }

@@ -7,6 +7,9 @@ import {
   updateFrameNameWithTags,
 } from "../utils";
 
+// 导入消息类型常量
+import { MESSAGE_TYPES } from "../ui/hooks/usePluginMessages";
+
 figma.showUI(__html__, { width: 400, height: 720 });
 
 interface IconMetadata {
@@ -166,9 +169,114 @@ figma.ui.onmessage = async (msg) => {
       console.error("Error renaming frame:", error);
       figma.notify("Error renaming frame: " + (error as Error).message);
     }
-  } else if (msg.type === "get-selection") {
+  } else if (msg.type === MESSAGE_TYPES.BATCH_ADD_TAG) {
+    const { nodeIds, tag } = msg;
+
+    if (!tag || !nodeIds || !nodeIds.length) {
+      figma.notify("Invalid request: missing tag or nodeIds");
+      return;
+    }
+
+    try {
+      // 存储已更新的节点信息
+      const updatedNodes: { id: string; name: string }[] = [];
+
+      // 处理每个节点，等待所有异步操作完成
+      await Promise.all(
+        nodeIds.map(async (nodeId: string) => {
+          const node = await figma.getNodeByIdAsync(nodeId);
+
+          if (node && "name" in node) {
+            // 提取现有标签和名称
+            const { cleanName, tags } = extractTags(node.name);
+
+            // 检查标签是否已存在
+            if (!tags.includes(tag)) {
+              tags.push(tag);
+
+              // 创建新的节点名称，包含所有标签
+              const newTags = tags.join(",");
+              const updatedName = updateFrameNameWithTags(cleanName, newTags);
+
+              // 更新节点名称
+              node.name = updatedName;
+            }
+
+            // 记录已更新的节点
+            updatedNodes.push({ id: nodeId, name: node.name });
+          }
+        })
+      );
+
+      // 发送批量更新结果回 UI
+      figma.ui.postMessage({
+        type: MESSAGE_TYPES.BATCH_TAGS_UPDATED,
+        updatedNodes,
+      });
+
+      figma.notify(`Added tag "${tag}" to ${updatedNodes.length} icons`);
+    } catch (error) {
+      console.error("Batch add tag error:", error);
+      figma.notify(`Error adding tag: ${(error as Error).message}`);
+    }
+  } else if (msg.type === MESSAGE_TYPES.BATCH_REMOVE_TAG) {
+    const { nodeIds, tag } = msg;
+
+    if (!tag || !nodeIds || !nodeIds.length) {
+      figma.notify("Invalid request: missing tag or nodeIds");
+      return;
+    }
+
+    try {
+      // 存储已更新的节点信息
+      const updatedNodes: { id: string; name: string }[] = [];
+      let removedCount = 0;
+
+      // 处理每个节点，等待所有异步操作完成
+      await Promise.all(
+        nodeIds.map(async (nodeId: string) => {
+          const node = await figma.getNodeByIdAsync(nodeId);
+
+          if (node && "name" in node) {
+            // 提取现有标签和名称
+            const { cleanName, tags } = extractTags(node.name);
+
+            // 查找标签索引
+            const tagIndex = tags.indexOf(tag);
+
+            // 如果标签存在，移除它
+            if (tagIndex !== -1) {
+              tags.splice(tagIndex, 1);
+              removedCount++;
+
+              // 创建新的节点名称，包含所有剩余标签
+              const newTags = tags.join(",");
+              const updatedName = updateFrameNameWithTags(cleanName, newTags);
+
+              // 更新节点名称
+              node.name = updatedName;
+            }
+
+            // 记录已更新的节点
+            updatedNodes.push({ id: nodeId, name: node.name });
+          }
+        })
+      );
+
+      // 发送批量更新结果回 UI
+      figma.ui.postMessage({
+        type: MESSAGE_TYPES.BATCH_TAGS_UPDATED,
+        updatedNodes,
+      });
+
+      figma.notify(`Removed tag "${tag}" from ${removedCount} icons`);
+    } catch (error) {
+      console.error("Batch remove tag error:", error);
+      figma.notify(`Error removing tag: ${(error as Error).message}`);
+    }
+  } else if (msg.type === MESSAGE_TYPES.GET_SELECTION) {
     updateSelectionInfo();
-  } else if (msg.type === "close") {
+  } else if (msg.type === MESSAGE_TYPES.CLOSE) {
     figma.closePlugin();
   }
 };

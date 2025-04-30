@@ -120,10 +120,7 @@ const TagInput: React.FC<TagInputProps> = ({
   };
 
   return (
-    <div
-      className={`tag-input-container ${className}`}
-      onClick={handleContainerClick}
-    >
+    <div className="tag-input-container" onClick={handleContainerClick}>
       <div className="tag-input-tags">
         {tags.map((tag) => (
           <span key={tag.id} className="tag-input-tag">
