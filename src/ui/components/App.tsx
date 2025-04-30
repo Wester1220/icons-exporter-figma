@@ -34,24 +34,18 @@ const App: React.FC = () => {
 
     if (tags.length === 0) return;
 
-    // 批量处理所有标签
+    // 批量处理所有标签，一个一个处理
     if (batchTagOperation === "add") {
-      // 处理添加标签
+      // 处理添加标签，每个标签一个一个处理
       tags.forEach((tag) => batchAddTag(tag));
     } else if (batchTagOperation === "remove") {
-      // 处理删除标签
+      // 处理删除标签，每个标签一个一个处理
       tags.forEach((tag) => batchRemoveTag(tag));
     }
 
     // 重置状态
     setBatchTagsValue("");
     setBatchTagOperation(null);
-
-    // 等待所有消息处理完成后，触发一次导出操作来刷新UI
-    setTimeout(() => {
-      // 重新导出以强制刷新数据
-      exportFrames();
-    }, 300); // 添加延迟确保前面的操作已经完成
   };
 
   // 关闭批量标签操作
@@ -63,6 +57,36 @@ const App: React.FC = () => {
   // 处理标签值变化
   const handleTagsChange = (value: string) => {
     setBatchTagsValue(value);
+  };
+
+  // 解析状态文本，提取进度信息
+  const renderStatus = () => {
+    // 检查状态是否包含处理进度信息
+    if (status.includes("Processing")) {
+      const matches = status.match(/Processing (\d+) of (\d+)/);
+      if (matches && matches.length === 3) {
+        const current = parseInt(matches[1]);
+        const total = parseInt(matches[2]);
+        const percent = Math.round((current / total) * 100);
+
+        return (
+          <div className="status-with-progress">
+            <div className="status-text">
+              Processing tags: {current} of {total} ({percent}%)
+            </div>
+            <div className="progress-bar">
+              <div
+                className="progress-bar-inner"
+                style={{ width: `${percent}%` }}
+              ></div>
+            </div>
+          </div>
+        );
+      }
+    }
+
+    // 默认显示普通状态文本
+    return <div className="status">{status}</div>;
   };
 
   return (
@@ -97,7 +121,7 @@ const App: React.FC = () => {
         {!batchTagOperation && (
           <>
             <div className="status" role="status" aria-live="polite">
-              {status}
+              {renderStatus()}
             </div>
 
             {results.length >= 2 && (

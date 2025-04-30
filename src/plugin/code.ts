@@ -118,15 +118,43 @@ figma.ui.onmessage = async (msg) => {
       data: result,
     });
   } else if (msg.type === "update-tags") {
-    const { nodeId, tags } = msg;
+    const { nodeId, tags, operation } = msg;
 
     try {
       // 通过ID查找节点 (使用异步方法)
       const node = await figma.getNodeByIdAsync(nodeId);
 
       if (node && "name" in node) {
-        // 更新框架名称与新标签
-        const updatedName = updateFrameNameWithTags(node.name, tags);
+        let updatedName = "";
+
+        // 根据操作类型处理标签
+        if (operation === "add") {
+          // 添加单个标签
+          const { cleanName, tags: existingTags } = extractTags(node.name);
+          // 检查标签是否已存在
+          if (!existingTags.includes(tags)) {
+            existingTags.push(tags);
+          }
+          // 创建新的节点名称，包含所有标签
+          const newTags = existingTags.join(",");
+          updatedName = updateFrameNameWithTags(cleanName, newTags);
+        } else if (operation === "remove") {
+          // 删除单个标签
+          const { cleanName, tags: existingTags } = extractTags(node.name);
+          // 移除标签
+          const tagIndex = existingTags.indexOf(tags);
+          if (tagIndex !== -1) {
+            existingTags.splice(tagIndex, 1);
+          }
+          // 创建新的节点名称，包含所有剩余标签
+          const newTags = existingTags.join(",");
+          updatedName = updateFrameNameWithTags(cleanName, newTags);
+        } else {
+          // 常规的标签更新
+          updatedName = updateFrameNameWithTags(node.name, tags);
+        }
+
+        // 更新节点名称
         node.name = updatedName;
 
         figma.ui.postMessage({
@@ -135,7 +163,10 @@ figma.ui.onmessage = async (msg) => {
           updatedName: node.name,
         });
 
-        figma.notify("Tags updated successfully!");
+        // 对于批量操作，不显示通知以避免太多弹出
+        if (!operation) {
+          figma.notify("Tags updated successfully!");
+        }
       } else {
         figma.notify("Error: Node not found or not editable!");
       }

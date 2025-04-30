@@ -39,6 +39,15 @@ export function usePluginMessages() {
     resultsRef.current = results;
   }, [results]);
 
+  // 使用ref记录批量操作队列
+  const batchQueueRef = useRef<{
+    type: "add" | "remove";
+    tag: string;
+    nodeIds: string[];
+    currentIndex: number;
+    processing: boolean;
+  } | null>(null);
+
   // 处理导出图标
   const exportFrames = useCallback(() => {
     setLoading((prev) => ({ ...prev, export: true }));
@@ -127,7 +136,11 @@ export function usePluginMessages() {
       link.download = `${pageName}.zip`;
       link.click();
 
-      setStatus(`Downloaded ${resultsRef.current.length} icon(s)`);
+      setStatus(
+        `Downloaded ${resultsRef.current.length} ${
+          resultsRef.current.length > 1 ? "icons" : "icon"
+        }`
+      );
     } catch (error) {
       console.error("Error creating zip:", error);
       setStatus("Error creating zip file");
@@ -176,43 +189,106 @@ export function usePluginMessages() {
     }
   };
 
-  // 处理批量添加标签
-  const batchAddTag = useCallback(async (tag: string) => {
-    if (!tag.trim() || resultsRef.current.length < 2) return;
+  // 处理批量标签队列
+  const processBatchQueue = useCallback(() => {
+    const queue = batchQueueRef.current;
+    if (!queue || queue.processing === false) return;
 
-    setLoading((prev) => ({ ...prev, tags: true }));
+    // 如果队列中的所有项都已处理完毕
+    if (queue.currentIndex >= queue.nodeIds.length) {
+      // 重置队列
+      batchQueueRef.current = null;
+      setLoading((prev) => ({ ...prev, tags: false }));
+      setStatus(`Batch ${queue.type} tag operation completed`);
+      return;
+    }
 
-    // 向插件发送批量添加标签的消息
+    // 获取当前要处理的节点
+    const nodeId = queue.nodeIds[queue.currentIndex];
+
+    // 发送消息处理单个节点
     parent.postMessage(
       {
         pluginMessage: {
-          type: MESSAGE_TYPES.BATCH_ADD_TAG,
-          tag: tag.trim(),
-          nodeIds: resultsRef.current.map((result) => result.nodeId),
+          type:
+            queue.type === "add"
+              ? MESSAGE_TYPES.UPDATE_TAGS
+              : MESSAGE_TYPES.UPDATE_TAGS,
+          nodeId: nodeId,
+          tags: queue.tag, // 对于添加，这是要添加的标签；对于删除，这是要删除的标签
+          operation: queue.type, // 添加额外参数表明操作类型
         },
       },
       "*"
     );
+
+    // 更新队列中的索引
+    batchQueueRef.current.currentIndex++;
+
+    // 更新状态消息
+    setStatus(`Processing ${queue.currentIndex} of ${queue.nodeIds.length}...`);
   }, []);
 
-  // 处理批量删除标签
-  const batchRemoveTag = useCallback(async (tag: string) => {
-    if (!tag.trim() || resultsRef.current.length < 2) return;
+  // 每当标签更新成功时，处理队列中的下一个项
+  useEffect(() => {
+    if (batchQueueRef.current && !loading.tags) {
+      // 设置一个小延迟，避免请求太快
+      const timeoutId = setTimeout(() => {
+        if (batchQueueRef.current) {
+          setLoading((prev) => ({ ...prev, tags: true }));
+          processBatchQueue();
+        }
+      }, 100);
 
-    setLoading((prev) => ({ ...prev, tags: true }));
+      return () => clearTimeout(timeoutId);
+    }
+  }, [loading.tags, processBatchQueue]);
 
-    // 向插件发送批量删除标签的消息
-    parent.postMessage(
-      {
-        pluginMessage: {
-          type: MESSAGE_TYPES.BATCH_REMOVE_TAG,
-          tag: tag.trim(),
-          nodeIds: resultsRef.current.map((result) => result.nodeId),
-        },
-      },
-      "*"
-    );
-  }, []);
+  // 处理批量添加标签 - 只初始化队列，不执行实际操作
+  const batchAddTag = useCallback(
+    (tag: string) => {
+      if (!tag.trim() || resultsRef.current.length < 2) return;
+
+      const nodeIds = resultsRef.current.map((result) => result.nodeId);
+
+      // 设置批量操作队列
+      batchQueueRef.current = {
+        type: "add",
+        tag: tag.trim(),
+        nodeIds: nodeIds,
+        currentIndex: 0,
+        processing: true,
+      };
+
+      // 开始处理队列
+      setLoading((prev) => ({ ...prev, tags: true }));
+      processBatchQueue();
+    },
+    [processBatchQueue]
+  );
+
+  // 处理批量删除标签 - 只初始化队列，不执行实际操作
+  const batchRemoveTag = useCallback(
+    (tag: string) => {
+      if (!tag.trim() || resultsRef.current.length < 2) return;
+
+      const nodeIds = resultsRef.current.map((result) => result.nodeId);
+
+      // 设置批量操作队列
+      batchQueueRef.current = {
+        type: "remove",
+        tag: tag.trim(),
+        nodeIds: nodeIds,
+        currentIndex: 0,
+        processing: true,
+      };
+
+      // 开始处理队列
+      setLoading((prev) => ({ ...prev, tags: true }));
+      processBatchQueue();
+    },
+    [processBatchQueue]
+  );
 
   // 设置消息监听
   useEffect(() => {
