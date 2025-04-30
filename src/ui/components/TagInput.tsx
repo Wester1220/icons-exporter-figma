@@ -1,9 +1,9 @@
 import React, {
-  useState,
-  useRef,
-  useEffect,
-  KeyboardEvent,
   ChangeEvent,
+  KeyboardEvent,
+  useEffect,
+  useRef,
+  useState,
 } from "react";
 
 interface TagInputProps {
@@ -61,7 +61,7 @@ const TagInput: React.FC<TagInputProps> = ({
       // 检查是否已存在相同标签
       if (
         !tags.some(
-          (tag) => tag.text.toLowerCase() === trimmedText.toLowerCase(),
+          (tag) => tag.text.toLowerCase() === trimmedText.toLowerCase()
         )
       ) {
         const newTag: Tag = {

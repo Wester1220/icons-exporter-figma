@@ -1,10 +1,10 @@
 /// <reference types="@figma/plugin-typings" />
 import {
   extractTags,
-  toPascalCase,
-  toKebabCase,
-  updateFrameNameWithTags,
   renameFrameKeepTags,
+  toKebabCase,
+  toPascalCase,
+  updateFrameNameWithTags,
 } from "../utils";
 
 figma.showUI(__html__, { width: 400, height: 720 });
@@ -117,42 +117,54 @@ figma.ui.onmessage = async (msg) => {
   } else if (msg.type === "update-tags") {
     const { nodeId, tags } = msg;
 
-    // 通过ID查找节点
-    const node = figma.getNodeById(nodeId);
+    try {
+      // 通过ID查找节点 (使用异步方法)
+      const node = await figma.getNodeByIdAsync(nodeId);
 
-    if (node) {
-      // 更新框架名称与新标签
-      const updatedName = updateFrameNameWithTags(node.name, tags);
-      node.name = updatedName;
+      if (node && "name" in node) {
+        // 更新框架名称与新标签
+        const updatedName = updateFrameNameWithTags(node.name, tags);
+        node.name = updatedName;
 
-      figma.ui.postMessage({
-        type: "tags-updated",
-        nodeId: nodeId,
-      });
+        figma.ui.postMessage({
+          type: "tags-updated",
+          nodeId: nodeId,
+          updatedName: node.name,
+        });
 
-      figma.notify("Tags updated successfully!");
-    } else {
-      figma.notify("Error: Node not found!");
+        figma.notify("Tags updated successfully!");
+      } else {
+        figma.notify("Error: Node not found or not editable!");
+      }
+    } catch (error) {
+      console.error("Error updating tags:", error);
+      figma.notify("Error updating tags: " + (error as Error).message);
     }
   } else if (msg.type === "rename-frame") {
     const { nodeId, newName } = msg;
 
-    // 通过ID查找节点
-    const node = figma.getNodeById(nodeId);
+    try {
+      // 通过ID查找节点 (使用异步方法)
+      const node = await figma.getNodeByIdAsync(nodeId);
 
-    if (node) {
-      // 重命名框架但保持现有标签
-      const updatedName = renameFrameKeepTags(node.name, newName);
-      node.name = updatedName;
+      if (node && "name" in node) {
+        // 重命名框架但保持现有标签
+        const updatedName = renameFrameKeepTags(node.name, newName);
+        node.name = updatedName;
 
-      figma.ui.postMessage({
-        type: "rename-updated",
-        nodeId: nodeId,
-      });
+        figma.ui.postMessage({
+          type: "rename-updated",
+          nodeId: nodeId,
+          updatedName: node.name,
+        });
 
-      figma.notify("Frame renamed successfully!");
-    } else {
-      figma.notify("Error: Node not found!");
+        figma.notify("Frame renamed successfully!");
+      } else {
+        figma.notify("Error: Node not found or not editable!");
+      }
+    } catch (error) {
+      console.error("Error renaming frame:", error);
+      figma.notify("Error renaming frame: " + (error as Error).message);
     }
   } else if (msg.type === "get-selection") {
     updateSelectionInfo();
